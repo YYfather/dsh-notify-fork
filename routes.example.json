@@ -1,0 +1,29 @@
+{
+  "aibots": [
+    {
+      "id": "main",
+      "botId": "aibXXXXXX",
+      "secret": "SECRET",
+      "toChatIds": []
+    },
+    {
+      "id": "paper",
+      "botId": "aibYYYYYY",
+      "secret": "SECRET2",
+      "toChatIds": []
+    }
+  ],
+  "workspaceRoutes": {
+    "*": {
+      "mode": "status"
+    },
+    "D:\\paper": {
+      "mode": "full",
+      "bot": "paper"
+    },
+    "E:\\studywork\\DSHwork": {
+      "mode": "status",
+      "bot": "main"
+    }
+  }
+}
