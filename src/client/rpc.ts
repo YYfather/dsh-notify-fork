@@ -71,6 +71,8 @@ export interface AiBotRule {
   workspace: string
   /** 该机器人转发哪些消息类型（仅分配工作区时生效）。 */
   events: string[]
+  /** 总机器人的工作区范围（['*'] = 全部）。 */
+  workspaces?: string[]
   /** 连接状态：ready / connecting / error / disabled / missing。 */
   state?: string
   /** 连接失败原因（state === 'error' 时）。 */

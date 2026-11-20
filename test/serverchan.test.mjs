@@ -1,7 +1,7 @@
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { hostname } from 'node:os';
-import { buildServerChanPayload, formatServerChanTitle } from '../lib/adapters/serverchan.js';
+import { buildServerChanBody, buildServerChanPayload, formatServerChanTitle } from '../lib/adapters/serverchan.js';
 import { adapterPayloadFor } from '../lib/routes.js';
 
 const event = {
@@ -44,27 +44,24 @@ test('serverchan adapter is skipped for wecom-only routes', () => {
   assert.equal(adapterPayloadFor({ name: 'serverchan' }, e, { mode: 'status', via: 'wecom' }), null);
 });
 
-test('status mode strips the body but keeps counts', () => {
-  const e = { title: 't', message: '💬 SECRET', metadata: { steps: 4, title: '会话A' } };
+test('status mode no longer rewrites the body (adapter owns it)', () => {
+  const e = { title: 't', message: 'body', metadata: { steps: 4, title: '会话A' } };
   const payload = adapterPayloadFor({ name: 'serverchan' }, e, { mode: 'status', via: 'serverchan' });
-  assert.ok(!payload.message.includes('SECRET'));
-  assert.match(payload.message, /💬 会话A/);
+  assert.equal(payload.message, 'body');
 });
-test('企业微信 passes through while Server酱 stays brief', () => {
-  const event = { title: 't', message: '💬 问题\n🤖 回复', metadata: { workspace: 'DSHwork', title: '会话A', steps: 3 } };
+test('routing leaves the body alone for both channel kinds', () => {
+  const event = { title: 't', message: '💬 问题\n🤖 回复', metadata: { workspace: 'DSHwork', title: '会话A' } };
   assert.equal(adapterPayloadFor({ name: 'wecom-aibot', botKey: 'main' }, event, { mode: 'status' }).message, event.message);
-  const brief = adapterPayloadFor({ name: 'serverchan' }, event, { mode: 'status' });
-  assert.ok(brief.message.startsWith('📁 DSHwork'));
-  assert.ok(!brief.message.includes('💬 问题'));
+  assert.equal(adapterPayloadFor({ name: 'serverchan' }, event, { mode: 'status' }).message, event.message);
 });
-test('default brief body carries counts plus a gist', () => {
-  const briefEvent = { title: 't', message: '💬 问题\n🤖 我改了通知插件的路由表并跑通了测试', metadata: { workspace: 'DSHwork', steps: 12, title: '会话A', reply: '我改了通知插件的路由表并跑通了测试' } };
-  const payload = adapterPayloadFor({ name: 'serverchan' }, briefEvent, { mode: 'status' }, {});
-  assert.equal(payload.message.split('\n').length, 3);
-  assert.match(payload.message.split('\n')[0], /^📁 /);
-  assert.match(payload.message.split('\n')[1], /^💬 会话A/);
-  assert.match(payload.message.split('\n')[2], /^🗒 我改了通知插件/);
-  assert.ok(!payload.message.includes('💬 问题'));
+test('serverchan body is a header list plus the reply with its own breaks', () => {
+  const event = { title: 't', message: 'ignored', metadata: { workspace: 'DSHwork', title: '会话A', reply: '第一行\n第二行\n\n空行后的段落' } };
+  const body = buildServerChanBody(event);
+  assert.ok(body.includes('- 📁 DSHwork'));
+  assert.ok(body.includes('- 💬 会话A'));
+  const rows = body.split('\n');
+  assert.ok(rows.some((row) => row.startsWith('第一行  ')));
+  assert.ok(rows.some((row) => row.startsWith('第二行')));
 });
 
 test('off still mutes every routed channel', () => {

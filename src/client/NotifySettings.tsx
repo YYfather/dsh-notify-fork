@@ -410,6 +410,7 @@ function BotDialog(props: {
   const [botId, setBotId] = useState('')
   const [secret, setSecret] = useState('')
   const [workspace, setWorkspace] = useState('')
+  const [workspaces, setWorkspaces] = useState<string[]>(['*'])
   const [ready, setReady] = useState(false)
 
   useEffect(() => {
@@ -419,6 +420,7 @@ function BotDialog(props: {
     setBotId(props.initial?.botId ?? '')
     setSecret('')
     setWorkspace(props.initial?.workspace ?? '')
+    setWorkspaces(props.initial?.workspaces && props.initial.workspaces.length > 0 ? props.initial.workspaces : ['*'])
     setReady(true)
   }, [props.open, props.initial])
 
@@ -458,7 +460,9 @@ function BotDialog(props: {
             {props.workspaces.map((row) => <option key={row.path} value={row.path}>{row.title}</option>)}
           </select>
         ) : (
-          <p className={css.hint}>默认不分配工作区，添加后可在列表里再分配。</p>
+          <>
+            <p className={css.hint}>工作区范围请在「推送规则」里设置。</p>
+          </>
         )}
         <div className={css.field}>
           <button className={css.save} disabled={!valid || props.busy}
@@ -469,6 +473,7 @@ function BotDialog(props: {
               hasSecret: true,
               interactive: editing ? (props.initial?.interactive ?? true) : true,
               workspace,
+              workspaces,
               events: props.initial?.events ?? [],
               ...(secret.trim().length > 0 ? { secret: secret.trim() } : {}),
             })}>
@@ -560,6 +565,27 @@ function PushRulesSection(props: { rpcCall: NotifyRpcCall; t: (key: string) => s
           <summary className={css.label}>消息类型与工作区（点击展开）</summary>
           <EventToggles events={rules.events} selected={rules.channels.wecom.events} disabled={busy}
             onChange={(events) => patchChannel('wecom', { events })} />
+        <p className={css.hint}>推送哪些工作区（未在此列出的工作区不发企业微信）：</p>
+        <div className={css.field}>
+          {rules.workspaces.map((workspace) => {
+            const list = rules.channels.wecom.workspaces ?? ['*']
+            const all = list.includes('*')
+            const checked = all || list.includes(workspace.path)
+            return (
+              <label className={css.label} key={workspace.path}>
+                <input type="checkbox" checked={checked} disabled={busy}
+                  onChange={(change) => {
+                    const base = all ? rules.workspaces.map((row) => row.path) : list.filter((entry) => entry !== '*')
+                    const nextList = change.target.checked
+                      ? [...base, workspace.path].filter((entry, i, arr) => arr.indexOf(entry) === i)
+                      : base.filter((entry) => entry !== workspace.path)
+                    patchChannel('wecom', { workspaces: nextList.length > 0 ? nextList : ['*'] })
+                  }} />
+                {' '}{workspace.title}
+              </label>
+            )
+          })}
+        </div>
         </details>
       </div>
 
@@ -622,7 +648,9 @@ function PushRulesSection(props: { rpcCall: NotifyRpcCall; t: (key: string) => s
           <div className={css.fieldHead} key={bot.id || index}>
             <span className={css.label}>{bot.label || bot.id}</span>
             <span className={css.hint}>
-              {bot.workspace ? `专属 · ${workspaceTitle(bot.workspace)}` : '总机器人'} · {botStatusText(bot)}
+              {bot.workspace
+                ? `专属 · ${workspaceTitle(bot.workspace)}`
+                : `总机器人${bot.workspaces && !bot.workspaces.includes('*') ? ` · ${bot.workspaces.length} 个工作区` : ''}`} · {botStatusText(bot)}
             </span>
             <button className={css.save} disabled={busy}
               onClick={() => { setEditing(index); setDialogOpen(true) }}>编辑</button>

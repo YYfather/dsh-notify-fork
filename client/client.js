@@ -2912,6 +2912,7 @@ window.__ModuleLoader__.load({ id: "dsh-notify-plugin", factory: (require) => {
 			const [botId, setBotId] = (0, react.useState)("");
 			const [secret, setSecret] = (0, react.useState)("");
 			const [workspace, setWorkspace] = (0, react.useState)("");
+			const [workspaces, setWorkspaces] = (0, react.useState)(["*"]);
 			const [ready, setReady] = (0, react.useState)(false);
 			(0, react.useEffect)(() => {
 				if (!props.open) {
@@ -2923,6 +2924,7 @@ window.__ModuleLoader__.load({ id: "dsh-notify-plugin", factory: (require) => {
 				setBotId(props.initial?.botId ?? "");
 				setSecret("");
 				setWorkspace(props.initial?.workspace ?? "");
+				setWorkspaces(props.initial?.workspaces && props.initial.workspaces.length > 0 ? props.initial.workspaces : ["*"]);
 				setReady(true);
 			}, [props.open, props.initial]);
 			if (!props.open || !ready) return null;
@@ -2992,10 +2994,10 @@ window.__ModuleLoader__.load({ id: "dsh-notify-plugin", factory: (require) => {
 								value: row.path,
 								children: row.title
 							}, row.path))]
-						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+						}) : /* @__PURE__ */ (0, react_jsx_runtime.jsx)(react_jsx_runtime.Fragment, { children: /* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
 							className: NotifySettings_module_css_default.hint,
-							children: "默认不分配工作区，添加后可在列表里再分配。"
-						}),
+							children: "工作区范围请在「推送规则」里设置。"
+						}) }),
 						/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
 							className: NotifySettings_module_css_default.field,
 							children: [
@@ -3009,6 +3011,7 @@ window.__ModuleLoader__.load({ id: "dsh-notify-plugin", factory: (require) => {
 										hasSecret: true,
 										interactive: editing ? props.initial?.interactive ?? true : true,
 										workspace,
+										workspaces,
 										events: props.initial?.events ?? [],
 										...secret.trim().length > 0 ? { secret: secret.trim() } : {}
 									}),
@@ -3126,15 +3129,47 @@ window.__ModuleLoader__.load({ id: "dsh-notify-plugin", factory: (require) => {
 									"启用"
 								]
 							}),
-							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", { children: [/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", {
-								className: NotifySettings_module_css_default.label,
-								children: "消息类型与工作区（点击展开）"
-							}), /* @__PURE__ */ (0, react_jsx_runtime.jsx)(EventToggles, {
-								events: rules.events,
-								selected: rules.channels.wecom.events,
-								disabled: busy,
-								onChange: (events) => patchChannel("wecom", { events })
-							})] })
+							/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("details", { children: [
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("summary", {
+									className: NotifySettings_module_css_default.label,
+									children: "消息类型与工作区（点击展开）"
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)(EventToggles, {
+									events: rules.events,
+									selected: rules.channels.wecom.events,
+									disabled: busy,
+									onChange: (events) => patchChannel("wecom", { events })
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("p", {
+									className: NotifySettings_module_css_default.hint,
+									children: "推送哪些工作区（未在此列出的工作区不发企业微信）："
+								}),
+								/* @__PURE__ */ (0, react_jsx_runtime.jsx)("div", {
+									className: NotifySettings_module_css_default.field,
+									children: rules.workspaces.map((workspace) => {
+										const list = rules.channels.wecom.workspaces ?? ["*"];
+										const all = list.includes("*");
+										const checked = all || list.includes(workspace.path);
+										return /* @__PURE__ */ (0, react_jsx_runtime.jsxs)("label", {
+											className: NotifySettings_module_css_default.label,
+											children: [
+												/* @__PURE__ */ (0, react_jsx_runtime.jsx)("input", {
+													type: "checkbox",
+													checked,
+													disabled: busy,
+													onChange: (change) => {
+														const base = all ? rules.workspaces.map((row) => row.path) : list.filter((entry) => entry !== "*");
+														const nextList = change.target.checked ? [...base, workspace.path].filter((entry, i, arr) => arr.indexOf(entry) === i) : base.filter((entry) => entry !== workspace.path);
+														patchChannel("wecom", { workspaces: nextList.length > 0 ? nextList : ["*"] });
+													}
+												}),
+												" ",
+												workspace.title
+											]
+										}, workspace.path);
+									})
+								})
+							] })
 						]
 					}),
 					/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("div", {
@@ -3268,7 +3303,7 @@ window.__ModuleLoader__.load({ id: "dsh-notify-plugin", factory: (require) => {
 								/* @__PURE__ */ (0, react_jsx_runtime.jsxs)("span", {
 									className: NotifySettings_module_css_default.hint,
 									children: [
-										bot.workspace ? `专属 · ${workspaceTitle(bot.workspace)}` : "总机器人",
+										bot.workspace ? `专属 · ${workspaceTitle(bot.workspace)}` : `总机器人${bot.workspaces && !bot.workspaces.includes("*") ? ` · ${bot.workspaces.length} 个工作区` : ""}`,
 										" · ",
 										botStatusText(bot)
 									]
